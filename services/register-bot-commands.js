@@ -1,6 +1,6 @@
 // register-bot-commands.js
 
-const BITRIX_WEBHOOK = 'https://hdl.bitrix24.ru/rest/1673/i68qf66obat53t2s/';
+const BITRIX_WEBHOOK = 'https://hdl.bitrix24.ru/rest/1673/kv9kkb0237aipgy3/';
 
 const COMMANDS_TO_REGISTER = [
   { COMMAND: 'refine', TITLE: 'Уточнить запрос' },
@@ -30,7 +30,7 @@ async function registerCommands() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          BOT_ID: '4335',
+          BOT_ID: '4337',
           COMMAND: cmd.COMMAND,
           TITLE: cmd.TITLE,
           HIDDEN: 'N'
