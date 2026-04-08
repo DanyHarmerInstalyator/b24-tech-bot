@@ -1,0 +1,17 @@
+{
+  "name": "b24-tech-bot",
+  "version": "1.0.0",
+  "description": "Бот техподдержки HDL для Битрикс24",
+  "main": "api/webhook.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel deploy --prod",
+    "start": "node api/webhook.js"
+  },
+  "keywords": ["bitrix24", "telegram", "bot", "support", "hdl"],
+  "author": "Your Name",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.x"
+  }
+}

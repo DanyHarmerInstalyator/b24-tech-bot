@@ -1,0 +1,17 @@
+{
+  "functions": {
+    "api/webhook.js": {
+      "maxDuration": 10,
+      "memory": 1024
+    }
+  },
+  "env": {
+    "BOT_ID": "4335",
+    "CLIENT_ID": "obwagyqim9hw3xbrxrmm6g43jyi2xaz1",
+    "BITRIX_WEBHOOK": "https://hdl.bitrix24.ru/rest/1673/i68qf66obat53t2s/",
+    "YOUR_USER_ID": "1673",
+    "YANDEX_DISK_TOKEN": "y0__xClxcOlqveAAhjblgMg-LXCxxRBKeS-X8JKyy4F6FpdHCDREv3kZg",
+    "YANDEX_DISK_PUBLIC_KEY": "zL7GKQgcMMkcJg",
+    "YANDEX_DISK_FOLDER_PATH": "/8. Документация по брендам. Общая"
+  }
+}
