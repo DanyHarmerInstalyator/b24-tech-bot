@@ -1,6 +1,5 @@
 // api/webhook.js
 // Главный обработчик вебхука для Битрикс24
-console.log('🔍 RAW BODY:', JSON.stringify(req.body, null, 2));
 
 const { 
   searchFiles, 
@@ -54,11 +53,17 @@ function extractBitrixData(data) {
     result.userId = data["data[USER][ID]"];
   }
   
-  // Проверяем нажатие кнопки (COMMAND)
-  if (data["data[PARAMS][COMMAND]"]) {
+  // 🔧 Улучшенная проверка нажатия кнопки (ищем COMMAND в разных форматах)
+  const command = 
+    data["data[PARAMS][COMMAND]"] || 
+    data["data[PARAMS][BUTTON_COMMAND]"] || 
+    data["data[PARAMS][BUTTON_ID]"] ||
+    (data["data[PARAMS]"] && typeof data["data[PARAMS]"] === 'object' && data["data[PARAMS]"].COMMAND);
+  
+  if (command) {
     result.isButton = true;
-    result.command = data["data[PARAMS][COMMAND]"];
-    console.log('🔘 Нажата кнопка с командой:', result.command);
+    result.command = command;
+    console.log('🔘 Нажата кнопка с командой:', command);
   }
   
   // Проверяем не от бота ли сообщение
@@ -81,7 +86,6 @@ function extractBitrixData(data) {
 async function handleTextCommands(dialogId, text, userName) {
   console.log(`🎯 Проверка текстовой команды: "${text}"`);
   
-  // Команды, которые пользователь пишет вручную
   if (text === '/refine' || text === 'refine' || text === 'уточнить') {
     await sendMessage(dialogId, "📝 *Уточните ваш запрос*\n\nНапишите, что именно вы ищете, например:\n• 'кабель hdl'\n• 'инструкция easycool'\n• 'прошивка urri'");
     return true;
@@ -206,12 +210,16 @@ async function handleButtonCommand(dialogId, command, userName) {
       }
       break;
       
+    case 'show_categories':
+      await sendCategories(dialogId);
+      break;
+      
     case 'back':
       await sendMessageWithKeyboard(dialogId, "🔙 Главное меню. Что вас интересует?", COMMON_BUTTONS);
       return;
       
     default:
-      await sendMessage(dialogId, "🤔 Неизвестная команда. Пожалуйста, воспользуйтесь кнопками меню.");
+      await sendMessage(dialogId, "🤔 Неизвестная команда: " + command + ". Пожалуйста, воспользуйтесь кнопками меню.");
       return;
   }
   
@@ -298,8 +306,11 @@ setInterval(() => {
   }
 }, 60 * 60 * 1000);
 
-// Главный обработчик вебхука
+// ✅ ГЛАВНЫЙ ОБРАБОТЧИК ВЕБХУКА
 module.exports = async (req, res) => {
+  // ✅ БЕЗОПАСНО: теперь req определён внутри функции
+  console.log('🔍 RAW BODY:', JSON.stringify(req.body, null, 2));
+  
   // Проверяем метод
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
