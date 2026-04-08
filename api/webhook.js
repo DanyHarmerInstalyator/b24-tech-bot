@@ -32,9 +32,11 @@ function extractBitrixData(data) {
     userName: null,
     userId: null,
     isButton: false,
+    isBot: false,
     command: null
   };
   
+  // Извлекаем параметры
   if (data["data[PARAMS][MESSAGE]"]) {
     result.message = data["data[PARAMS][MESSAGE]"];
   }
@@ -51,21 +53,32 @@ function extractBitrixData(data) {
     result.userId = data["data[USER][ID]"];
   }
   
+  // Проверяем нажатие кнопки (COMMAND)
   if (data["data[PARAMS][COMMAND]"]) {
     result.isButton = true;
     result.command = data["data[PARAMS][COMMAND]"];
+    console.log('🔘 Нажата кнопка с командой:', result.command);
   }
   
+  // Проверяем не от бота ли сообщение
   if (data["data[USER][IS_BOT]"] === 'Y') {
     result.isBot = true;
   }
   
+  console.log('📊 Извлеченные данные:', {
+    dialogId: result.dialogId,
+    message: result.message,
+    userName: result.userName,
+    isButton: result.isButton,
+    command: result.command
+  });
+  
   return result;
 }
 
-// Обработка текстовых команд
+// Обработка текстовых команд (которые пользователь пишет вручную)
 async function handleTextCommands(dialogId, text, userName) {
-  console.log(`🎯 Проверка команды: "${text}"`);
+  console.log(`🎯 Проверка текстовой команды: "${text}"`);
   
   // Команды, которые пользователь пишет вручную
   if (text === '/refine' || text === 'refine' || text === 'уточнить') {
@@ -107,6 +120,102 @@ async function handleTextCommands(dialogId, text, userName) {
   }
   
   return false;
+}
+
+// Обработка команд от кнопок
+async function handleButtonCommand(dialogId, command, userName) {
+  console.log(`🔘 Обработка кнопки: ${command}`);
+  
+  switch (command) {
+    // Категории
+    case 'category_cable':
+      const cableResult = handleFolderRedirect("кабель");
+      await sendMessage(dialogId, cableResult.message);
+      break;
+      
+    case 'category_lock':
+      const lockResult = handleFolderRedirect("замок");
+      await sendMessage(dialogId, lockResult.message);
+      break;
+      
+    case 'category_easycool':
+      const easycoolResult = handleFolderRedirect("easycool");
+      await sendMessage(dialogId, easycoolResult.message);
+      break;
+      
+    case 'category_coolplug':
+      const coolplugResult = handleFolderRedirect("coolplug");
+      await sendMessage(dialogId, coolplugResult.message);
+      break;
+      
+    case 'category_alisa':
+      const alisaResult = handleFolderRedirect("алиса");
+      await sendMessage(dialogId, alisaResult.message);
+      break;
+      
+    case 'all_categories':
+      await sendCategories(dialogId);
+      return;
+      
+    // Карнизы
+    case 'curtain_buspro':
+      await sendMessage(dialogId, "📁 *Карнизы Buspro*\nhttps://disk.360.yandex.ru/d/20Q51Ey5rDMXqA");
+      break;
+      
+    case 'curtain_knx':
+      await sendMessage(dialogId, "📁 *Карнизы KNX*\nhttps://disk.360.yandex.ru/d/x1w6XEUthCgTVg");
+      break;
+      
+    // Кондиционеры
+    case 'ac_easycool':
+      await sendMessage(dialogId, "📁 *Кондиционеры EasyCool*\nhttps://disk.360.yandex.ru/d/EuWsEkI__LPmIQ");
+      break;
+      
+    case 'ac_coolauto':
+      await sendMessage(dialogId, "📁 *Кондиционеры CoolAutomation*\nhttps://disk.360.yandex.ru/d/UVzihaR7eRIRmw");
+      break;
+      
+    // Основные команды
+    case 'refine':
+      await sendMessage(dialogId, "📝 *Уточните запрос*\nНапишите более конкретное описание того, что ищете.");
+      break;
+      
+    case 'transfer':
+      await transferToSpecialist(dialogId, userName, 39);
+      break;
+      
+    case 'helpful':
+      const ctx = dialogContexts.get(dialogId);
+      const query = ctx ? ctx.lastQuery : "запрос";
+      await handleHelpful(dialogId, query);
+      break;
+      
+    case 'more_results':
+      const context = dialogContexts.get(dialogId);
+      if (context && context.lastResults) {
+        const moreResults = context.lastResults.slice(5, 15);
+        if (moreResults.length > 0) {
+          const response = formatSearchResults(moreResults, context.lastQuery);
+          await sendMessage(dialogId, response);
+        } else {
+          await sendMessage(dialogId, "📭 Больше результатов не найдено.");
+        }
+      } else {
+        await sendMessage(dialogId, "🔍 Сначала выполните поиск.");
+      }
+      break;
+      
+    case 'back':
+      await sendMessageWithKeyboard(dialogId, "🔙 Главное меню. Что вас интересует?", COMMON_BUTTONS);
+      return;
+      
+    default:
+      await sendMessage(dialogId, "🤔 Неизвестная команда. Пожалуйста, воспользуйтесь кнопками меню.");
+      return;
+  }
+  
+  // После ответа показываем кнопки
+  await sendMessageWithKeyboard(dialogId, "🔍 Что дальше?", COMMON_BUTTONS);
 }
 
 // Обработка текстовых сообщений
@@ -178,7 +287,7 @@ async function handleTextMessage(dialogId, message, userName) {
   return true;
 }
 
-// Очистка старых контекстов
+// Очистка старых контекстов (каждый час)
 setInterval(() => {
   const now = Date.now();
   for (const [dialogId, context] of dialogContexts.entries()) {
@@ -190,6 +299,7 @@ setInterval(() => {
 
 // Главный обработчик вебхука
 module.exports = async (req, res) => {
+  // Проверяем метод
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -212,8 +322,13 @@ module.exports = async (req, res) => {
     
     console.log(`💬 Обработка от ${bitrixData.userName} (${bitrixData.dialogId})`);
     
-    // Обрабатываем сообщение
-    await handleTextMessage(bitrixData.dialogId, bitrixData.message, bitrixData.userName);
+    // Если это нажатие кнопки
+    if (bitrixData.isButton) {
+      await handleButtonCommand(bitrixData.dialogId, bitrixData.command, bitrixData.userName);
+    } else {
+      // Обычное текстовое сообщение
+      await handleTextMessage(bitrixData.dialogId, bitrixData.message, bitrixData.userName);
+    }
     
     return res.status(200).json({ status: 'ok', message: 'Processed' });
     
