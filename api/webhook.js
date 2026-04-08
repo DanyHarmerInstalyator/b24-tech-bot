@@ -163,8 +163,9 @@ async function handleButtonCommand(dialogId, command, userName) {
       return;
 
     case 'ECHO_TEST':
-  await sendMessage(dialogId, `🎉 ТЕСТ УСПЕШЕН!\nВы нажали кнопку с командой: \`transfer\`\nВремя: ${new Date().toLocaleTimeString()}`);
-  break;  
+  await sendMessage(dialogId, `🎉 ТЕСТ УСПЕШЕН!\nКоманда: \`${command}\`\nВремя: ${new Date().toLocaleTimeString()}`);
+  await sendMessageWithKeyboard(dialogId, "🔍 Что дальше?", COMMON_BUTTONS);
+  return;  
       
     // Карнизы
     case 'curtain_buspro':

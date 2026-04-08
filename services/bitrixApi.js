@@ -65,34 +65,34 @@ async function sendMessage(dialogId, message) {
   }
 }
 
-// Отправка сообщения с кнопками — ИСПРАВЛЕННАЯ ВЕРСИЯ
+// Отправка сообщения с кнопками — ИСПРАВЛЕННАЯ ВЕРСИЯ (KEYBOARD, не ATTACH!)
 async function sendMessageWithKeyboard(dialogId, message, buttons = null) {
   try {
     const url = `${BITRIX_WEBHOOK}imbot.message.add`;
     const keyboardButtons = buttons || COMMON_BUTTONS;
     
-    // ✅ Формат через ATTACH для надёжной работы кнопок
-    const payload = {
-      BOT_ID: BOT_ID,
-      CLIENT_ID: CLIENT_ID,
-      DIALOG_ID: dialogId,
-      MESSAGE: message,
-      ATTACH: {
-        TYPE: 'KEYBOARD',
-        BUTTONS: keyboardButtons.map(btn => ({
-          TEXT: btn.text,
-          COMMAND: btn.command,
-          COMMAND_PARAMS: { command: btn.command } // 👈 Объект, не строка!
-        }))
-      }
+    // ✅ Правильный формат клавиатуры для imbot.message.add
+    const keyboard = {
+      BUTTONS: keyboardButtons.map(btn => ({
+        TEXT: btn.text,
+        COMMAND: btn.command
+        // 👇 COMMAND_PARAMS не обязателен для простых команд
+        // Если нужен: COMMAND_PARAMS: { command: btn.command }
+      }))
     };
     
-    console.log('📎 Отправка ATTACH:', JSON.stringify(payload.ATTACH, null, 2));
+    console.log('📎 Отправка KEYBOARD:', JSON.stringify(keyboard, null, 2));
     
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        BOT_ID: BOT_ID,
+        CLIENT_ID: CLIENT_ID,
+        DIALOG_ID: dialogId,
+        MESSAGE: message,
+        KEYBOARD: keyboard  // 👈 KEYBOARD, не ATTACH!
+      })
     });
     
     const data = await response.json();
@@ -105,14 +105,15 @@ async function sendMessageWithKeyboard(dialogId, message, buttons = null) {
     });
     
     if (!response.ok || data.error) {
-      console.error('❌ Ошибка отправки:', data.error || data);
-      return sendMessage(dialogId, message); // Фолбэк без кнопок
+      console.error('❌ Ошибка отправки клавиатуры:', data.error || data);
+      // Пробуем отправить сообщение без кнопок как фолбэк
+      return sendMessage(dialogId, message);
     }
     
     console.log(`✅ Сообщение с кнопками отправлено в диалог ${dialogId}`);
     return data;
   } catch (error) {
-    console.error('❌ Ошибка при отправке:', error);
+    console.error('❌ Ошибка при отправке с кнопками:', error);
     return sendMessage(dialogId, message);
   }
 }
