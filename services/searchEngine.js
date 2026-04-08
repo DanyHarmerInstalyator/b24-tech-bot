@@ -2,7 +2,7 @@
 
 const { normalizeWithSynonyms } = require('../utils/normalizer');
 const { expandSynonyms } = require('../data/synonyms');
-const { shouldRedirectToFolder: checkFolderRedirect, getBothCurtains, getBothAC } = require('../data/folderLinks');
+const { shouldRedirectToFolder, getBothCurtains, getBothAC } = require('../data/folderLinks');
 const fs = require('fs');
 const path = require('path');
 
@@ -240,7 +240,7 @@ function handleFolderRedirect(query) {
   }
   
   // Обычная проверка через folderLinks
-  const redirect = checkFolderRedirect(query);
+  const redirect = shouldRedirectToFolder(query);
   if (redirect.redirect) {
     console.log(`✅ Перенаправление на: ${redirect.link}`);
     return {
