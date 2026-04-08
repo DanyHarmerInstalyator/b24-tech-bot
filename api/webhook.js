@@ -51,12 +51,25 @@ function extractBitrixData(data) {
     result.userId = data["data[USER][ID]"];
   }
   
-  // Проверяем нажатие кнопки (COMMAND)
+  // ВАЖНО: Проверяем нажатие кнопки (COMMAND)
+  // Кнопки приходят в data[PARAMS][COMMAND] или в data[PARAMS][COMMAND_PARAMS]
   if (data["data[PARAMS][COMMAND]"]) {
     result.isButton = true;
     result.command = data["data[PARAMS][COMMAND]"];
-    result.message = data["data[PARAMS][COMMAND]"]; // Используем команду как сообщение
-    console.log('🔘 Нажата кнопка:', result.command);
+    console.log('🔘 Нажата кнопка (COMMAND поле):', result.command);
+  }
+  
+  // Альтернативное поле для команды
+  if (data["data[PARAMS][COMMAND_PARAMS]"]) {
+    result.isButton = true;
+    result.command = data["data[PARAMS][COMMAND_PARAMS]"];
+    console.log('🔘 Нажата кнопка (COMMAND_PARAMS поле):', result.command);
+  }
+  
+  // Если сообщение начинается с / - это тоже команда
+  if (result.message && result.message.startsWith('/')) {
+    result.isCommand = true;
+    result.command = result.message.slice(1);
   }
   
   // Проверяем не от бота ли сообщение
