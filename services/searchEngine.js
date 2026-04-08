@@ -148,33 +148,64 @@ function getFileLink(filePath) {
   return `${baseUrl}/${encodedPath}`;
 }
 
-// Форматирование результатов
+// services/searchEngine.js — функция formatSearchResults
+
 function formatSearchResults(results, query) {
   if (!results || results.length === 0) {
-    return `🔍 По запросу "${query}" ничего не найдено.\n\nПопробуйте:\n• Уточнить запрос\n• Использовать ключевые слова (кабель, замок, easycool)\n• Связаться со специалистом`;
+    return "❌ Ничего не найдено по запросу: *" + query + "*\n\nПопробуйте уточнить запрос или воспользуйтесь кнопками меню.";
   }
   
-  let response = `📋 *Результаты поиска по запросу:* "${query}"\n\n`;
-  response += `Найдено документов: ${results.length}\n\n`;
+  // Берем первые 5 результатов
+  const limited = results.slice(0, 5);
   
-  for (let i = 0; i < Math.min(results.length, 5); i++) {
-    const file = results[i];
-    const relevanceStars = file.relevance > 80 ? '⭐⭐⭐' : file.relevance > 50 ? '⭐⭐' : '⭐';
+  // Формируем ответ
+  let response = `✅ Найдено ${results.length} результат(ов) по запросу: *${query}*\n\n`;
+  
+  limited.forEach((item, index) => {
+    const title = item.name || item.title || 'Документ';
+    const url = item.url || item.link;
     
-    response += `${i + 1}. ${relevanceStars} *${file.name || file.norm_name || 'Документ'}*\n`;
-    if (file.norm_name && file.norm_name !== file.name) {
-      response += `   🏷️ ${file.norm_name}\n`;
+    // ✅ Форматируем ссылку как красивый текст
+    const cleanTitle = formatLinkTitle(title);
+    const maskedLink = `[📁 ${cleanTitle}](${url})`;
+    
+    response += `${index + 1}. ${maskedLink}\n`;
+    
+    // Если есть описание — добавляем
+    if (item.description) {
+      response += `   _${item.description}_\n`;
     }
-    response += `   🔗 [Скачать](${getFileLink(file.path)})\n\n`;
-  }
+  });
   
   if (results.length > 5) {
-    response += `_... и еще ${results.length - 5} документов_\n\n`;
+    response += `\n... и ещё ${results.length - 5} результат(ов). Напишите /more для продолжения.`;
   }
   
-  response += `\n📌 *Подсказка:* Если не нашли нужное, уточните запрос или обратитесь к специалисту.`;
-  
   return response;
+}
+
+// ✅ Вспомогательная функция: очищает название для ссылки
+function formatLinkTitle(title) {
+  if (!title) return 'Документ';
+  
+  // Убираем расширение файла
+  let clean = title.replace(/\.[a-zA-Z0-9]+$/, '');
+  
+  // Декодируем проценты (если есть)
+  clean = decodeURIComponent(clean);
+  
+  // Убираем лишние пробелы и спецсимволы
+  clean = clean
+    .replace(/\s+/g, ' ')
+    .replace(/^\d+\.\s*/, '')  // Убираем "01. ", "02. " в начале
+    .trim();
+  
+  // Ограничиваем длину
+  if (clean.length > 50) {
+    clean = clean.substring(0, 47) + '...';
+  }
+  
+  return clean;
 }
 
 // Обработка перенаправлений
