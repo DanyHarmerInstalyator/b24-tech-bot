@@ -10,7 +10,8 @@ const YOUR_USER_ID = process.env.YOUR_USER_ID;
 const COMMON_BUTTONS = [
   { text: "📝 Уточнить запрос", command: "refine" },
   { text: "👨‍💻 Связаться со специалистом", command: "transfer" },
-  { text: "✅ Помогло", command: "helpful" }
+  { text: "✅ Помогло", command: "helpful" },
+  { text: "🧪 ТЕСТ", command: "ECHO_TEST" }
 ];
 
 // Кнопки для уточнения запроса
@@ -64,53 +65,54 @@ async function sendMessage(dialogId, message) {
   }
 }
 
-// Отправка сообщения с кнопками
-async function sendMessageWithKeyboard(dialogId, message, buttons = null, attachButtons = true) {
+// Отправка сообщения с кнопками — ИСПРАВЛЕННАЯ ВЕРСИЯ
+async function sendMessageWithKeyboard(dialogId, message, buttons = null) {
   try {
     const url = `${BITRIX_WEBHOOK}imbot.message.add`;
+    const keyboardButtons = buttons || COMMON_BUTTONS;
     
-    // Используем переданные кнопки или стандартные
-    let keyboardButtons = buttons || COMMON_BUTTONS;
+    // ✅ Формат через ATTACH для надёжной работы кнопок
+    const payload = {
+      BOT_ID: BOT_ID,
+      CLIENT_ID: CLIENT_ID,
+      DIALOG_ID: dialogId,
+      MESSAGE: message,
+      ATTACH: {
+        TYPE: 'KEYBOARD',
+        BUTTONS: keyboardButtons.map(btn => ({
+          TEXT: btn.text,
+          COMMAND: btn.command,
+          COMMAND_PARAMS: { command: btn.command } // 👈 Объект, не строка!
+        }))
+      }
+    };
     
-    // Формат кнопок для Битрикс24
-
-const keyboard = {
-  BUTTONS: keyboardButtons.map(btn => ({
-    TEXT: btn.text,
-    COMMAND: btn.command,
-    COMMAND_PARAMS: { command: btn.command } // 👈 Объект, а не строка!
-    // ❌ Убираем TYPE: 'command' — он не нужен для этого типа бота
-  }))
-};
-    
-    console.log('📎 Отправка кнопок:', JSON.stringify(keyboard, null, 2));
+    console.log('📎 Отправка ATTACH:', JSON.stringify(payload.ATTACH, null, 2));
     
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        BOT_ID: BOT_ID,
-        CLIENT_ID: CLIENT_ID,
-        DIALOG_ID: dialogId,
-        MESSAGE: message,
-        KEYBOARD: keyboard
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
     
     const data = await response.json();
     
+    // 🔍 Логируем ответ для отладки
+    console.log('📬 Ответ Битрикс24:', {
+      status: response.status,
+      ok: response.ok,
+      data
+    });
+    
     if (!response.ok || data.error) {
-      console.error('❌ Ошибка отправки сообщения с кнопками:', data.error);
-      // Пробуем отправить без кнопок
-      return sendMessage(dialogId, message);
+      console.error('❌ Ошибка отправки:', data.error || data);
+      return sendMessage(dialogId, message); // Фолбэк без кнопок
     }
     
     console.log(`✅ Сообщение с кнопками отправлено в диалог ${dialogId}`);
     return data;
   } catch (error) {
-    console.error('❌ Ошибка при отправке с кнопками:', error);
+    console.error('❌ Ошибка при отправке:', error);
     return sendMessage(dialogId, message);
   }
 }
