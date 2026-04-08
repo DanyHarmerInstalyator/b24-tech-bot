@@ -78,9 +78,8 @@ const keyboard = {
   BUTTONS: keyboardButtons.map(btn => ({
     TEXT: btn.text,
     COMMAND: btn.command,
-    COMMAND_PARAMS: btn.command,
-    TYPE: 'command',  // 👈 Важно для Битрикс24!
-    ...(btn.link && { LINK: btn.link })
+    COMMAND_PARAMS: { command: btn.command } // 👈 Объект, а не строка!
+    // ❌ Убираем TYPE: 'command' — он не нужен для этого типа бота
   }))
 };
     
