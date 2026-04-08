@@ -111,7 +111,7 @@ async function sendMessageWithKeyboard(dialogId, message, buttons = null, attach
 }
 
 // Отправка сообщения с перенаправлением на специалиста
-async function transferToSpecialist(dialogId, userName = 'Пользователь') {
+async function transferToSpecialist(dialogId, userName, specialistId = 39) {
   const specialistMessage = `👨‍💻 *Перевод специалисту*\n\n` +
     `${userName}, ваш запрос передан техническому специалисту.\n` +
     `Пожалуйста, ожидайте ответа в ближайшее время.\n\n` +
@@ -120,15 +120,17 @@ async function transferToSpecialist(dialogId, userName = 'Пользовател
   // Отправляем пользователю
   await sendMessage(dialogId, specialistMessage);
   
-  // Отправляем уведомление специалисту (в личку)
+  // Отправляем уведомление специалисту (в личку с ID 39)
   const notificationMessage = `🔔 *Новый запрос от пользователя*\n\n` +
     `👤 Пользователь: ${userName}\n` +
     `💬 Диалог: ${dialogId}\n` +
     `⏰ Время: ${new Date().toLocaleString()}\n\n` +
     `_Ответьте в этом диалоге, чтобы помочь пользователю._`;
   
-  await sendMessage(YOUR_USER_ID, notificationMessage);
+  // Отправляем специалисту
+  await sendMessage(specialistId.toString(), notificationMessage);
   
+  console.log(`✅ Пользователь ${userName} переведен на специалиста ${specialistId}`);
   return true;
 }
 
