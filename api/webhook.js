@@ -88,69 +88,48 @@ function extractBitrixData(data) {
   return result;
 }
 
-// Обработка текстовых сообщений
-async function handleTextMessage(dialogId, message, userName) {
-  const text = message.toLowerCase().trim();
-  
-  console.log(`🔍 Обработка сообщения: "${text}"`);
-  
-  // Приветствия
-  const greetings = ['привет', 'здравствуй', 'бот', 'start', 'начать', '/start', 'help', 'помощь'];
-  if (greetings.some(g => text === g || text.startsWith(g))) {
-    return await sendWelcomeMessage(dialogId);
+// Добавьте эту функцию после импортов
+async function handleTextCommands(dialogId, text, userName) {
+  // Команды, которые пользователь пишет вручную
+  if (text === '/refine' || text === 'refine' || text === 'уточнить') {
+    await sendMessage(dialogId, "📝 *Уточните ваш запрос*\n\nНапишите, что именно вы ищете, например:\n• 'кабель hdl'\n• 'инструкция easycool'\n• 'прошивка urri'");
+    return true;
   }
   
-  // Показ категорий
-  if (text === 'категории' || text === 'категорий' || text === 'menu' || text === 'меню') {
-    return await sendCategories(dialogId);
+  if (text === '/transfer' || text === 'transfer' || text === 'специалист') {
+    await transferToSpecialist(dialogId, userName, 39);
+    return true;
   }
   
-  // Поиск документации
-  console.log(`🔎 Ищем: "${message}"`);
+  if (text === '/helpful' || text === 'helpful' || text === 'помогло') {
+    const ctx = dialogContexts.get(dialogId);
+    const query = ctx ? ctx.lastQuery : "неизвестный запрос";
+    await handleHelpful(dialogId, query);
+    return true;
+  }
   
-  // Проверяем перенаправления на папки
-  const folderRedirect = handleFolderRedirect(message);
-  if (folderRedirect.redirect) {
-    console.log(`📁 Перенаправление на папку: ${folderRedirect.type || 'single'}`);
-    if (folderRedirect.multiple) {
-      return await sendMessageWithKeyboard(dialogId, folderRedirect.message, folderRedirect.buttons);
+  if (text === '/more' || text === 'more_results' || text === 'больше') {
+    const ctx = dialogContexts.get(dialogId);
+    if (ctx && ctx.lastResults) {
+      const moreResults = ctx.lastResults.slice(5, 15);
+      if (moreResults.length > 0) {
+        const response = formatSearchResults(moreResults, ctx.lastQuery);
+        await sendMessage(dialogId, response);
+      } else {
+        await sendMessage(dialogId, "📭 Больше результатов не найдено.");
+      }
     } else {
-      await sendMessage(dialogId, folderRedirect.message);
-      return await sendMessageWithKeyboard(dialogId, "🔍 Что дальше?", COMMON_BUTTONS);
+      await sendMessage(dialogId, "🔍 Сначала выполните поиск.");
     }
+    return true;
   }
   
-  // Поиск файлов
-  let searchResults;
-  
-  const context = dialogContexts.get(dialogId);
-  if (context && context.lastQuery && context.lastResults && text.includes('уточн')) {
-    searchResults = searchWithContext(message, context.lastQuery, context.lastResults);
-    dialogContexts.delete(dialogId);
-  } else {
-    searchResults = searchFiles(message);
+  if (text === '/categories' || text === 'категории' || text === 'menu') {
+    await sendCategories(dialogId);
+    return true;
   }
   
-  console.log(`📊 Найдено результатов: ${searchResults ? searchResults.length : 0}`);
-  
-  if (searchResults && searchResults.length > 0) {
-    dialogContexts.set(dialogId, {
-      lastQuery: message,
-      lastResults: searchResults,
-      timestamp: Date.now()
-    });
-  }
-  
-  const response = formatSearchResults(searchResults, message);
-  await sendMessage(dialogId, response);
-  
-  if (searchResults && searchResults.length > 0) {
-    await sendMessageWithKeyboard(dialogId, "🔍 Что дальше?", REFINE_BUTTONS);
-  } else {
-    await sendMessageWithKeyboard(dialogId, "❌ Ничего не найдено. Что делать?", COMMON_BUTTONS);
-  }
-  
-  return true;
+  return false;
 }
 
 // Обработка команд от кнопок

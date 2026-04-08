@@ -116,22 +116,22 @@ async function sendMessageWithKeyboard(dialogId, message, buttons = null, attach
 
 // Отправка сообщения с перенаправлением на специалиста
 async function transferToSpecialist(dialogId, userName, specialistId = 39) {
-  const specialistMessage = `👨‍💻 *Перевод специалисту*\n\n` +
-    `${userName}, ваш запрос передан техническому специалисту.\n` +
-    `Пожалуйста, ожидайте ответа в ближайшее время.\n\n` +
-    `_Если вопрос срочный, позвоните по телефону: +7 (XXX) XXX-XX-XX_`;
+  // Сообщение пользователю
+  const userMessage = `👨‍💻 *Запрос передан специалисту*\n\n` +
+    `${userName}, ваше сообщение отправлено техническому специалисту.\n` +
+    `Специалист свяжется с вами в ближайшее время.\n\n` +
+    `_Пожалуйста, ожидайте ответа в этом чате._`;
   
-  // Отправляем пользователю
-  await sendMessage(dialogId, specialistMessage);
+  await sendMessage(dialogId, userMessage);
   
-  // Отправляем уведомление специалисту (в личку с ID 39)
+  // Уведомление специалисту
   const notificationMessage = `🔔 *Новый запрос от пользователя*\n\n` +
-    `👤 Пользователь: ${userName}\n` +
-    `💬 Диалог: ${dialogId}\n` +
-    `⏰ Время: ${new Date().toLocaleString()}\n\n` +
+    `👤 *Пользователь:* ${userName}\n` +
+    `💬 *Диалог:* ${dialogId}\n` +
+    `⏰ *Время:* ${new Date().toLocaleString()}\n\n` +
+    `📝 *Сообщение:* Пользователь запросил помощь специалиста\n\n` +
     `_Ответьте в этом диалоге, чтобы помочь пользователю._`;
   
-  // Отправляем специалисту
   await sendMessage(specialistId.toString(), notificationMessage);
   
   console.log(`✅ Пользователь ${userName} переведен на специалиста ${specialistId}`);
@@ -158,13 +158,19 @@ async function sendWelcomeMessage(dialogId) {
     `• Искать документацию по ключевым словам\n` +
     `• Предоставлять ссылки на папки Яндекс.Диска\n` +
     `• Отвечать на частые вопросы\n` +
-    `• Связывать со специалистом при необходимости\n\n` +
+    `• Связывать со специалистом\n\n` +
     `🔍 *Примеры запросов:*\n` +
     `• "кабель"\n` +
     `• "замок"\n` +
     `• "easycool техничка"\n` +
     `• "карниз buspro"\n` +
     `• "интеграция с алисой"\n\n` +
+    `📝 *Команды:*\n` +
+    `• /refine - Уточнить запрос\n` +
+    `• /transfer - Связаться со специалистом\n` +
+    `• /helpful - Отметить ответ полезным\n` +
+    `• /categories - Показать категории\n` +
+    `• /more - Показать больше результатов\n\n` +
     `Просто напишите, что ищете, и я помогу!`;
   
   return sendMessageWithKeyboard(dialogId, welcomeMessage);
