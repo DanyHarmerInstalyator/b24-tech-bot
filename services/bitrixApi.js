@@ -74,13 +74,12 @@ async function sendMessageWithKeyboard(dialogId, message, buttons = null, attach
     
     // Формат кнопок для Битрикс24
     const keyboard = {
-      BUTTONS: keyboardButtons.map(btn => ({
-        TEXT: btn.text,
-        COMMAND: btn.command,
-        COMMAND_PARAMS: btn.command,
-        ...(btn.link && { LINK: btn.link })
-      }))
-    };
+  BUTTONS: keyboardButtons.map(btn => ({
+    TEXT: btn.text,
+    COMMAND: btn.command,  // Это значение вернётся в вебхук при нажатии
+    TYPE: 'command'        // Явно указываем тип кнопки
+  }))
+};
     
     console.log('📎 Отправка кнопок:', JSON.stringify(keyboard, null, 2));
     

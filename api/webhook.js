@@ -1,5 +1,6 @@
 // api/webhook.js
 // Главный обработчик вебхука для Битрикс24
+console.log('🔍 RAW BODY:', JSON.stringify(req.body, null, 2));
 
 const { 
   searchFiles, 
