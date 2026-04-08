@@ -153,4 +153,54 @@ function expandSynonyms(query) {
   return [...new Set(expanded)].join(' ');
 }
 
-module.exports = { SYNONYMS, expandSynonyms };
+function normalizeWithSynonyms(text) {
+  if (!text || typeof text !== 'string') return '';
+  
+  // Приводим к нижнему регистру и убираем лишние пробелы
+  let normalized = text.toLowerCase().trim();
+  
+  // Удаляем стоп-слова (глаголы и служебные слова)
+  const stopWords = [
+    'сбрось', 'отправь', 'найди', 'дай', 'скинь', 'пришли',
+    'нужна', 'нужен', 'нужно', 'ищу', 'найти', 'пожалуйста',
+    'можно', 'где', 'как', 'что', 'это', 'для', 'по', 'в', 'на'
+  ];
+  
+  for (const stopWord of stopWords) {
+    normalized = normalized.replace(new RegExp(`\\b${stopWord}\\b`, 'gi'), '');
+  }
+  
+  // Применяем синонимы из словаря
+  let words = normalized.split(/\s+/).filter(w => w.length > 0);
+  let expanded = [];
+  
+  for (let word of words) {
+    let replaced = false;
+    
+    // Ищем точное совпадение или вхождение
+    for (const [wrong, correct] of Object.entries(SYNONYMS)) {
+      if (wrong && word === wrong) {
+        if (correct) {
+          expanded.push(...correct.split(' ').filter(w => w));
+        }
+        replaced = true;
+        break;
+      }
+    }
+    
+    // Если не заменили — оставляем как есть
+    if (!replaced) {
+      expanded.push(word);
+    }
+  }
+  
+  // Убираем дубликаты и пустые строки
+  return [...new Set(expanded)].filter(w => w).join(' ');
+}
+
+// Обновите module.exports в конце файла:
+module.exports = { 
+  SYNONYMS, 
+  expandSynonyms,
+  normalizeWithSynonyms  // 👈 Добавить эту строку!
+};
