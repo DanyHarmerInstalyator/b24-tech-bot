@@ -90,7 +90,7 @@ async function handleTextCommands(dialogId, text, userName) {
   }
   
   if (text === '/transfer' || text === 'transfer' || text === 'специалист') {
-    await transferToSpecialist(dialogId, userName, 39);
+    await transferToSpecialist(dialogId, userName, 1673);
     return true;
   }
   
@@ -180,7 +180,7 @@ async function handleButtonCommand(dialogId, command, userName) {
       break;
       
     case 'transfer':
-      await transferToSpecialist(dialogId, userName, 39);
+      await transferToSpecialist(dialogId, userName, 1673);
       break;
       
     case 'helpful':

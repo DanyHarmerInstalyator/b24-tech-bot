@@ -202,5 +202,5 @@ function normalizeWithSynonyms(text) {
 module.exports = { 
   SYNONYMS, 
   expandSynonyms,
-  normalizeWithSynonyms  // 👈 Добавить эту строку!
+  normalizeWithSynonyms  // 
 };

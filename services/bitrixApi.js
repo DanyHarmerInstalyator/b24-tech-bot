@@ -119,7 +119,7 @@ async function sendMessageWithKeyboard(dialogId, message, buttons = null) {
 }
 
 // Отправка сообщения с перенаправлением на специалиста
-async function transferToSpecialist(dialogId, userName, specialistId = 39) {
+async function transferToSpecialist(dialogId, userName, specialistId = 1673) {
   // Сообщение пользователю
   const userMessage = `👨‍💻 *Запрос передан специалисту*\n\n` +
     `${userName}, ваше сообщение отправлено техническому специалисту.\n` +
