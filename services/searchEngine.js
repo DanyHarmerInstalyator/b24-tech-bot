@@ -1,9 +1,8 @@
 // services/searchEngine.js
-// Поисковый движок (перенос Python логики)
 
 const { normalizeWithSynonyms } = require('../utils/normalizer');
 const { expandSynonyms } = require('../data/synonyms');
-const { shouldRedirectToFolder, getBothCurtains, getBothAC } = require('../data/folderLinks');
+const { shouldRedirectToFolder: checkFolderRedirect, getBothCurtains, getBothAC } = require('../data/folderLinks');
 const fs = require('fs');
 const path = require('path');
 
@@ -24,7 +23,6 @@ function loadFileIndex() {
     const data = fs.readFileSync(indexPath, 'utf8');
     let fileIndex = JSON.parse(data);
     
-    // Если индекс в формате объекта, конвертируем в массив
     if (!Array.isArray(fileIndex)) {
       fileIndex = Object.values(fileIndex);
     }
@@ -43,17 +41,14 @@ function loadFileIndex() {
 function calculateRelevance(item, queryWords, normQuery) {
   let relevance = 0;
   
-  // Проверяем по norm_name (наивысший приоритет)
   const normName = (item.norm_name || '').toLowerCase();
   const name = (item.name || '').toLowerCase();
   const path = (item.path || '').toLowerCase();
   
-  // Точное совпадение с norm_name
   if (normName === normQuery) {
     relevance += 100;
   }
   
-  // Поиск по словам в norm_name
   for (const word of queryWords) {
     if (normName.includes(word)) {
       relevance += 20;
@@ -66,7 +61,6 @@ function calculateRelevance(item, queryWords, normQuery) {
     }
   }
   
-  // Полное совпадение фразы
   if (normName.includes(normQuery)) {
     relevance += 30;
   }
@@ -74,7 +68,6 @@ function calculateRelevance(item, queryWords, normQuery) {
     relevance += 15;
   }
   
-  // Приоритет для точных совпадений брендов
   const brands = ['hdl', 'buspro', 'urri', 'matech', 'easycool', 'coolplug', 'yeelight'];
   for (const brand of brands) {
     if (normQuery.includes(brand) && normName.includes(brand)) {
@@ -88,16 +81,15 @@ function calculateRelevance(item, queryWords, normQuery) {
 // Основной поиск
 function searchFiles(query, limit = 10) {
   if (!query || query.trim().length === 0) {
+    console.log('⚠️ Пустой запрос');
     return [];
   }
   
   console.log(`🔍 Поиск: "${query}"`);
   
-  // Нормализуем запрос
   let normalizedQuery = normalizeWithSynonyms(query);
   console.log(`📝 Нормализовано: "${normalizedQuery}"`);
   
-  // Расширяем синонимы
   let expandedQuery = expandSynonyms(normalizedQuery);
   if (expandedQuery !== normalizedQuery) {
     console.log(`🔄 Расширено: "${expandedQuery}"`);
@@ -108,19 +100,16 @@ function searchFiles(query, limit = 10) {
     return [];
   }
   
-  // Загружаем индекс
   const fileIndex = loadFileIndex();
   if (fileIndex.length === 0) {
     return [];
   }
   
-  // Вычисляем релевантность для каждого файла
   const results = fileIndex.map(item => ({
     ...item,
     relevance: calculateRelevance(item, queryWords, expandedQuery)
   }));
   
-  // Фильтруем и сортируем
   const relevantResults = results
     .filter(item => item.relevance > 0)
     .sort((a, b) => b.relevance - a.relevance)
@@ -130,9 +119,8 @@ function searchFiles(query, limit = 10) {
   return relevantResults;
 }
 
-// Поиск с контекстом (для уточнений)
+// Поиск с контекстом
 function searchWithContext(query, previousQuery, previousResults) {
-  // Если предыдущий поиск дал точные результаты, сужаем поиск
   if (previousResults && previousResults.length > 0 && previousResults.length < 5) {
     const normQuery = normalizeWithSynonyms(query);
     const filtered = previousResults.filter(item => {
@@ -146,28 +134,21 @@ function searchWithContext(query, previousQuery, previousResults) {
     }
   }
   
-  // Иначе обычный поиск
   return searchFiles(query);
 }
 
-// Получение ссылки на файл с Яндекс.Диска
+// Получение ссылки на файл
 function getFileLink(filePath) {
-  // Формируем прямую ссылку на Яндекс.Диск
-  // Базовая ссылка: https://disk.360.yandex.ru/d/xJi6eEXBTq01sw/
   const baseUrl = 'https://disk.360.yandex.ru/d/xJi6eEXBTq01sw';
-  
-  // Очищаем путь от лишних символов
   let cleanPath = filePath
-    .replace(/^\/+/, '') // Убираем начальные слеши
-    .replace(/\[|\]/g, ''); // Убираем квадратные скобки
+    .replace(/^\/+/, '')
+    .replace(/\[|\]/g, '');
   
-  // Кодируем путь для URL
   const encodedPath = encodeURIComponent(cleanPath).replace(/%2F/g, '/');
-  
   return `${baseUrl}/${encodedPath}`;
 }
 
-// Форматирование результатов поиска
+// Форматирование результатов
 function formatSearchResults(results, query) {
   if (!results || results.length === 0) {
     return `🔍 По запросу "${query}" ничего не найдено.\n\nПопробуйте:\n• Уточнить запрос\n• Использовать ключевые слова (кабель, замок, easycool)\n• Связаться со специалистом`;
@@ -196,11 +177,12 @@ function formatSearchResults(results, query) {
   return response;
 }
 
-// Обработка команд перенаправления
+// Обработка перенаправлений
 function handleFolderRedirect(query) {
   const lowerQuery = query.toLowerCase().trim();
+  console.log(`📁 Проверка перенаправления для: "${lowerQuery}"`);
   
-  // Проверяем специальные случаи с множественными вариантами
+  // Специальные случаи
   if (lowerQuery.includes('карниз')) {
     if (lowerQuery.includes('buspro') || lowerQuery.includes('баспро')) {
       return { 
@@ -217,7 +199,6 @@ function handleFolderRedirect(query) {
         message: `📁 *Карнизы KNX*\n${getBothCurtains()[1].link}`
       };
     } else {
-      // Предлагаем оба варианта
       return {
         redirect: true,
         multiple: true,
@@ -230,7 +211,6 @@ function handleFolderRedirect(query) {
     }
   }
   
-  // Проверяем кондиционеры
   if (lowerQuery.includes('кондиционер')) {
     if (lowerQuery.includes('easycool')) {
       return { 
@@ -259,9 +239,10 @@ function handleFolderRedirect(query) {
     }
   }
   
-  // Обычное перенаправление
-  const redirect = shouldRedirectToFolder(query);
+  // Обычная проверка через folderLinks
+  const redirect = checkFolderRedirect(query);
   if (redirect.redirect) {
+    console.log(`✅ Перенаправление на: ${redirect.link}`);
     return {
       redirect: true,
       multiple: false,
@@ -270,6 +251,7 @@ function handleFolderRedirect(query) {
     };
   }
   
+  console.log(`❌ Нет перенаправления для: "${lowerQuery}"`);
   return { redirect: false };
 }
 
