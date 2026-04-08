@@ -1,7 +1,8 @@
 // services/searchEngine.js
 // Поисковый движок для документации (Яндекс.Диск + локальный поиск)
 
-const { normalizeWithSynonyms } = require('../data/synonyms'); // ✅ Правильный путь к файлу синонимов
+// ✅ Импорт функции нормализации с синонимами
+const { normalizeWithSynonyms } = require('../data/synonyms');
 
 // Кэш результатов поиска (опционально, для производительности)
 const searchCache = new Map();
@@ -105,11 +106,27 @@ function formatLinkTitle(title) {
   }
   
   // Ограничиваем длину
-  if (clean.length > 60) {
-    clean = clean.substring(0, 57) + '...';
+  if (clean.length > 50) {
+    clean = clean.substring(0, 47) + '...';
   }
   
   return clean || 'Документ';
+}
+
+/**
+ * Строит публичную ссылку на Яндекс.Диск
+ * @param {string} folderPath - Путь к папке
+ * @returns {string} - Публичная ссылка
+ */
+function buildYandexLink(folderPath) {
+  const basePath = YANDEX_CONFIG.basePath.replace(/\/$/, '');
+  const fullPath = `${basePath}${folderPath}`;
+  
+  // Кодируем путь для URL
+  const encodedPath = encodeURIComponent(fullPath);
+  
+  // Формируем ссылку на публичную папку
+  return `https://disk.360.yandex.ru/d/${YANDEX_CONFIG.publicKey}${encodedPath}`;
 }
 
 /**
@@ -129,13 +146,15 @@ function handleFolderRedirect(query) {
     const folderPath = FOLDER_REDIRECTS[normalized];
     const url = buildYandexLink(folderPath);
     const folderName = normalized.charAt(0).toUpperCase() + normalized.slice(1);
+    const cleanName = formatLinkTitle(folderName);
     
     console.log(`✅ Точное совпадение: ${url}`);
     
+    // ✅ BBCode-формат для Битрикс24: [url=...]Текст[/url]
     return {
       redirect: true,
       type: 'single',
-      message: `📁 [${formatLinkTitle(folderName)}](${url})`,
+      message: `[url=${url}]📁 ${cleanName}[/url]`,
       url: url,
       folderName: folderName
     };
@@ -146,13 +165,15 @@ function handleFolderRedirect(query) {
     if (normalized.includes(key)) {
       const url = buildYandexLink(path);
       const displayName = key.charAt(0).toUpperCase() + key.slice(1);
+      const cleanName = formatLinkTitle(displayName);
       
       console.log(`✅ Частичное совпадение "${key}": ${url}`);
       
+      // ✅ BBCode-формат для Битрикс24
       return {
         redirect: true,
         type: 'single',
-        message: `📁 [${formatLinkTitle(displayName)}](${url})`,
+        message: `[url=${url}]📁 ${cleanName}[/url]`,
         url: url,
         folderName: displayName
       };
@@ -161,22 +182,6 @@ function handleFolderRedirect(query) {
   
   console.log(`❌ Нет перенаправления для: "${normalized}"`);
   return { redirect: false };
-}
-
-/**
- * Строит публичную ссылку на Яндекс.Диск
- * @param {string} folderPath - Путь к папке
- * @returns {string} - Публичная ссылка
- */
-function buildYandexLink(folderPath) {
-  const basePath = YANDEX_CONFIG.basePath.replace(/\/$/, '');
-  const fullPath = `${basePath}${folderPath}`;
-  
-  // Кодируем путь для URL
-  const encodedPath = encodeURIComponent(fullPath);
-  
-  // Формируем ссылку на публичную папку
-  return `https://disk.360.yandex.ru/d/${YANDEX_CONFIG.publicKey}${encodedPath}`;
 }
 
 /**
@@ -262,6 +267,7 @@ function searchWithContext(newQuery, prevQuery, prevResults) {
 
 /**
  * Форматирует результаты поиска в сообщение для чата
+ * ✅ Использует BBCode-формат Битрикс24 для кликабельных ссылок
  * @param {Array} results - Массив результатов
  * @param {string} query - Исходный запрос
  * @returns {string} - Отформатированное сообщение
@@ -286,9 +292,10 @@ function formatSearchResults(results, query) {
     
     const cleanTitle = formatLinkTitle(title);
     
-    // Если URL есть — форматируем как кликабельную ссылку, иначе показываем только текст
+    // ✅ BBCode-формат для Битрикс24: [url=...]Текст[/url]
+    // Это скрывает длинный URL и показывает только чистый кликабельный текст
     const linkDisplay = url 
-      ? `[📁 ${cleanTitle}](${url})` 
+      ? `[url=${url}]📁 ${cleanTitle}[/url]` 
       : `📁 ${cleanTitle} (ссылка недоступна)`;
     
     response += `${index + 1}. ${linkDisplay}\n`;
