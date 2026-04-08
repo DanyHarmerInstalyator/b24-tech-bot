@@ -232,6 +232,31 @@ async function handleButtonCommand(dialogId, command, userName) {
   await sendMessageWithKeyboard(dialogId, "🔍 Что дальше?", COMMON_BUTTONS);
 }
 
+// 🔁 РЕЗЕРВНАЯ ОБРАБОТКА: если кнопка пришла как текст сообщения
+// (Битрикс иногда не передаёт COMMAND, а шлёт текст кнопки)
+const BUTTON_TEXT_TO_COMMAND = {
+  '📝 Уточнить запрос': 'refine',
+  '👨‍💻 Связаться со специалистом': 'transfer',
+  '✅ Помогло': 'helpful',
+  '🧪 ТЕСТ': 'ECHO_TEST',
+  '🔍 Показать больше результатов': 'more_results',
+  '📁 Посмотреть категории': 'show_categories',
+  '◀️ Назад': 'back',
+  // Категории
+  '🔌 Кабели': 'category_cable',
+  '🔒 Замки': 'category_lock',
+  '❄️ EasyCool': 'category_easycool',
+  '🔌 CoolPlug': 'category_coolplug',
+  '🎤 Алиса/Интеграция': 'category_alisa',
+  '📋 Все категории': 'all_categories'
+};
+
+// Проверяем, не является ли сообщение текстом кнопки
+if (BUTTON_TEXT_TO_COMMAND[message]) {
+  console.log(`🔁 Кнопка распознана по тексту: "${message}" → ${BUTTON_TEXT_TO_COMMAND[message]}`);
+  return handleButtonCommand(dialogId, BUTTON_TEXT_TO_COMMAND[message], userName);
+}
+
 // Обработка текстовых сообщений
 async function handleTextMessage(dialogId, message, userName) {
   const text = message.toLowerCase().trim();
