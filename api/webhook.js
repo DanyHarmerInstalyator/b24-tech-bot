@@ -36,7 +36,6 @@ function extractBitrixData(data) {
     command: null
   };
   
-  // Извлекаем параметры
   if (data["data[PARAMS][MESSAGE]"]) {
     result.message = data["data[PARAMS][MESSAGE]"];
   }
@@ -53,7 +52,7 @@ function extractBitrixData(data) {
     result.userId = data["data[USER][ID]"];
   }
   
-  // 🔧 Улучшенная проверка нажатия кнопки (ищем COMMAND в разных форматах)
+  // Проверка нажатия кнопки
   const command = 
     data["data[PARAMS][COMMAND]"] || 
     data["data[PARAMS][BUTTON_COMMAND]"] || 
@@ -66,7 +65,6 @@ function extractBitrixData(data) {
     console.log('🔘 Нажата кнопка с командой:', command);
   }
   
-  // Проверяем не от бота ли сообщение
   if (data["data[USER][IS_BOT]"] === 'Y') {
     result.isBot = true;
   }
@@ -82,7 +80,7 @@ function extractBitrixData(data) {
   return result;
 }
 
-// Обработка текстовых команд (которые пользователь пишет вручную)
+// Обработка текстовых команд
 async function handleTextCommands(dialogId, text, userName) {
   console.log(`🎯 Проверка текстовой команды: "${text}"`);
   
@@ -132,7 +130,6 @@ async function handleButtonCommand(dialogId, command, userName) {
   console.log(`🔘 Обработка кнопки: ${command}`);
   
   switch (command) {
-    // Категории
     case 'category_cable':
       const cableResult = handleFolderRedirect("кабель");
       await sendMessage(dialogId, cableResult.message);
@@ -161,13 +158,7 @@ async function handleButtonCommand(dialogId, command, userName) {
     case 'all_categories':
       await sendCategories(dialogId);
       return;
-
-    case 'ECHO_TEST':
-  await sendMessage(dialogId, `🎉 ТЕСТ УСПЕШЕН!\nКоманда: \`${command}\`\nВремя: ${new Date().toLocaleTimeString()}`);
-  await sendMessageWithKeyboard(dialogId, "🔍 Что дальше?", COMMON_BUTTONS);
-  return;  
       
-    // Карнизы
     case 'curtain_buspro':
       await sendMessage(dialogId, "📁 *Карнизы Buspro*\nhttps://disk.360.yandex.ru/d/20Q51Ey5rDMXqA");
       break;
@@ -176,7 +167,6 @@ async function handleButtonCommand(dialogId, command, userName) {
       await sendMessage(dialogId, "📁 *Карнизы KNX*\nhttps://disk.360.yandex.ru/d/x1w6XEUthCgTVg");
       break;
       
-    // Кондиционеры
     case 'ac_easycool':
       await sendMessage(dialogId, "📁 *Кондиционеры EasyCool*\nhttps://disk.360.yandex.ru/d/EuWsEkI__LPmIQ");
       break;
@@ -185,7 +175,6 @@ async function handleButtonCommand(dialogId, command, userName) {
       await sendMessage(dialogId, "📁 *Кондиционеры CoolAutomation*\nhttps://disk.360.yandex.ru/d/UVzihaR7eRIRmw");
       break;
       
-    // Основные команды
     case 'refine':
       await sendMessage(dialogId, "📝 *Уточните запрос*\nНапишите более конкретное описание того, что ищете.");
       break;
@@ -223,89 +212,64 @@ async function handleButtonCommand(dialogId, command, userName) {
       await sendMessageWithKeyboard(dialogId, "🔙 Главное меню. Что вас интересует?", COMMON_BUTTONS);
       return;
       
+    // ✅ ТЕСТОВАЯ КНОПКА
+    case 'ECHO_TEST':
+      await sendMessage(dialogId, `🎉 ТЕСТ УСПЕШЕН!\nКоманда: \`${command}\`\nВремя: ${new Date().toLocaleTimeString()}`);
+      await sendMessageWithKeyboard(dialogId, "🔍 Что дальше?", COMMON_BUTTONS);
+      return;
+      
     default:
       await sendMessage(dialogId, "🤔 Неизвестная команда: " + command + ". Пожалуйста, воспользуйтесь кнопками меню.");
       return;
   }
   
-  // После ответа показываем кнопки
   await sendMessageWithKeyboard(dialogId, "🔍 Что дальше?", COMMON_BUTTONS);
-}
-
-// 🔁 РЕЗЕРВНАЯ ОБРАБОТКА: если кнопка пришла как текст сообщения
-// (Битрикс иногда не передаёт COMMAND, а шлёт текст кнопки)
-const BUTTON_TEXT_TO_COMMAND = {
-  '📝 Уточнить запрос': 'refine',
-  '👨‍💻 Связаться со специалистом': 'transfer',
-  '✅ Помогло': 'helpful',
-  '🧪 ТЕСТ': 'ECHO_TEST',
-  '🔍 Показать больше результатов': 'more_results',
-  '📁 Посмотреть категории': 'show_categories',
-  '◀️ Назад': 'back',
-  // Категории
-  '🔌 Кабели': 'category_cable',
-  '🔒 Замки': 'category_lock',
-  '❄️ EasyCool': 'category_easycool',
-  '🔌 CoolPlug': 'category_coolplug',
-  '🎤 Алиса/Интеграция': 'category_alisa',
-  '📋 Все категории': 'all_categories'
-};
-
-// Проверяем, не является ли сообщение текстом кнопки
-if (BUTTON_TEXT_TO_COMMAND[message]) {
-  console.log(`🔁 Кнопка распознана по тексту: "${message}" → ${BUTTON_TEXT_TO_COMMAND[message]}`);
-  return handleButtonCommand(dialogId, BUTTON_TEXT_TO_COMMAND[message], userName);
 }
 
 // Обработка текстовых сообщений
 async function handleTextMessage(dialogId, message, userName) {
-  // 🔁 РЕЗЕРВНАЯ ОБРАБОТКА: если кнопка пришла как текст сообщения
-// (Битрикс иногда не передаёт COMMAND, а шлёт текст кнопки в MESSAGE)
-const BUTTON_TEXT_TO_COMMAND = {
-  '🧪 ТЕСТ': 'ECHO_TEST',
-  '👨‍💻 Связаться со специалистом': 'transfer',
-  '📝 Уточнить запрос': 'refine',
-  '✅ Помогло': 'helpful',
-  '🔍 Показать больше результатов': 'more_results',
-  '📁 Посмотреть категории': 'show_categories',
-  '◀️ Назад': 'back',
-  // Категории
-  '🔌 Кабели': 'category_cable',
-  '🔒 Замки': 'category_lock',
-  '❄️ EasyCool': 'category_easycool',
-  '🔌 CoolPlug': 'category_coolplug',
-  '🎤 Алиса/Интеграция': 'category_alisa',
-  '📋 Все категории': 'all_categories'
-};
+  // ✅ РЕЗЕРВНАЯ ОБРАБОТКА КНОПОК ПО ТЕКСТУ — ВНУТРИ ФУНКЦИИ, где message определена
+  const BUTTON_TEXT_TO_COMMAND = {
+    '🧪 ТЕСТ': 'ECHO_TEST',
+    '👨‍💻 Связаться со специалистом': 'transfer',
+    '📝 Уточнить запрос': 'refine',
+    '✅ Помогло': 'helpful',
+    '🔍 Показать больше результатов': 'more_results',
+    '📁 Посмотреть категории': 'show_categories',
+    '◀️ Назад': 'back',
+    '🔌 Кабели': 'category_cable',
+    '🔒 Замки': 'category_lock',
+    '❄️ EasyCool': 'category_easycool',
+    '🔌 CoolPlug': 'category_coolplug',
+    '🎤 Алиса/Интеграция': 'category_alisa',
+    '📋 Все категории': 'all_categories'
+  };
 
-// Проверяем точное совпадение текста кнопки
-if (BUTTON_TEXT_TO_COMMAND[message]) {
-  console.log(`🔁 Кнопка распознана по тексту: "${message}" → ${BUTTON_TEXT_TO_COMMAND[message]}`);
-  return handleButtonCommand(dialogId, BUTTON_TEXT_TO_COMMAND[message], userName);
-}  
+  // Проверяем точное совпадение текста кнопки
+  if (BUTTON_TEXT_TO_COMMAND[message]) {
+    console.log(`🔁 Кнопка распознана по тексту: "${message}" → ${BUTTON_TEXT_TO_COMMAND[message]}`);
+    return handleButtonCommand(dialogId, BUTTON_TEXT_TO_COMMAND[message], userName);
+  }
+  
+  // Дальше — обычная логика
   const text = message.toLowerCase().trim();
   
   console.log(`🔍 Обработка сообщения: "${text}"`);
   
-  // Проверяем команды
   const isCommand = await handleTextCommands(dialogId, text, userName);
   if (isCommand) return true;
   
-  // Приветствия
   const greetings = ['привет', 'здравствуй', 'бот', 'start', 'начать', '/start', 'help', 'помощь'];
   if (greetings.some(g => text === g || text.startsWith(g))) {
     return await sendWelcomeMessage(dialogId);
   }
   
-  // Показ категорий
   if (text === 'категории' || text === 'категорий' || text === 'menu' || text === 'меню') {
     return await sendCategories(dialogId);
   }
   
-  // Поиск документации
   console.log(`🔎 Ищем: "${message}"`);
   
-  // Проверяем перенаправления на папки
   const folderRedirect = handleFolderRedirect(message);
   if (folderRedirect.redirect) {
     console.log(`📁 Перенаправление на папку: ${folderRedirect.type || 'single'}`);
@@ -317,7 +281,6 @@ if (BUTTON_TEXT_TO_COMMAND[message]) {
     }
   }
   
-  // Поиск файлов
   let searchResults;
   
   const context = dialogContexts.get(dialogId);
@@ -350,7 +313,7 @@ if (BUTTON_TEXT_TO_COMMAND[message]) {
   return true;
 }
 
-// Очистка старых контекстов (каждый час)
+// Очистка старых контекстов
 setInterval(() => {
   const now = Date.now();
   for (const [dialogId, context] of dialogContexts.entries()) {
@@ -360,12 +323,10 @@ setInterval(() => {
   }
 }, 60 * 60 * 1000);
 
-// ✅ ГЛАВНЫЙ ОБРАБОТЧИК ВЕБХУКА
+// Главный обработчик вебхука
 module.exports = async (req, res) => {
-  // ✅ БЕЗОПАСНО: теперь req определён внутри функции
   console.log('🔍 RAW BODY:', JSON.stringify(req.body, null, 2));
   
-  // Проверяем метод
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -388,11 +349,9 @@ module.exports = async (req, res) => {
     
     console.log(`💬 Обработка от ${bitrixData.userName} (${bitrixData.dialogId})`);
     
-    // Если это нажатие кнопки
     if (bitrixData.isButton) {
       await handleButtonCommand(bitrixData.dialogId, bitrixData.command, bitrixData.userName);
     } else {
-      // Обычное текстовое сообщение
       await handleTextMessage(bitrixData.dialogId, bitrixData.message, bitrixData.userName);
     }
     
