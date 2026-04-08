@@ -1,5 +1,4 @@
-// api/webhook.js
-// Главный обработчик вебхука для Битрикс24
+// api/webhook.js (полностью заменяем)
 
 const { 
   searchFiles, 
@@ -20,7 +19,6 @@ const {
   CATEGORY_BUTTONS
 } = require('../services/bitrixApi');
 
-// Хранилище контекстов диалогов (в памяти)
 const dialogContexts = new Map();
 
 // Функция для извлечения данных из плоской структуры Битрикс24
@@ -31,10 +29,12 @@ function extractBitrixData(data) {
     message: null,
     userName: null,
     userId: null,
-    isCommand: false
+    isCommand: false,
+    isButton: false,
+    command: null
   };
   
-  // Извлекаем параметры из data["data[PARAMS]..."]
+  // Извлекаем параметры
   if (data["data[PARAMS][MESSAGE]"]) {
     result.message = data["data[PARAMS][MESSAGE]"];
   }
@@ -51,21 +51,25 @@ function extractBitrixData(data) {
     result.userId = data["data[USER][ID]"];
   }
   
+  // Проверяем нажатие кнопки (COMMAND)
+  if (data["data[PARAMS][COMMAND]"]) {
+    result.isButton = true;
+    result.command = data["data[PARAMS][COMMAND]"];
+    result.message = data["data[PARAMS][COMMAND]"]; // Используем команду как сообщение
+    console.log('🔘 Нажата кнопка:', result.command);
+  }
+  
   // Проверяем не от бота ли сообщение
   if (data["data[USER][IS_BOT]"] === 'Y') {
     result.isBot = true;
-  }
-  
-  // Проверяем команда ли это
-  if (result.message && result.message.startsWith('/')) {
-    result.isCommand = true;
   }
   
   console.log('📊 Извлеченные данные:', {
     dialogId: result.dialogId,
     message: result.message,
     userName: result.userName,
-    userId: result.userId
+    isButton: result.isButton,
+    command: result.command
   });
   
   return result;
@@ -88,14 +92,18 @@ async function handleTextMessage(dialogId, message, userName) {
     return await sendCategories(dialogId);
   }
   
+  // Поиск документации
+  console.log(`🔎 Ищем: "${message}"`);
+  
   // Проверяем перенаправления на папки
   const folderRedirect = handleFolderRedirect(message);
   if (folderRedirect.redirect) {
+    console.log(`📁 Перенаправление на папку: ${folderRedirect.type || 'single'}`);
     if (folderRedirect.multiple) {
       return await sendMessageWithKeyboard(dialogId, folderRedirect.message, folderRedirect.buttons);
     } else {
       await sendMessage(dialogId, folderRedirect.message);
-      return await sendMessageWithKeyboard(dialogId, "Что дальше?", COMMON_BUTTONS);
+      return await sendMessageWithKeyboard(dialogId, "🔍 Что дальше?", COMMON_BUTTONS);
     }
   }
   
@@ -109,6 +117,8 @@ async function handleTextMessage(dialogId, message, userName) {
   } else {
     searchResults = searchFiles(message);
   }
+  
+  console.log(`📊 Найдено результатов: ${searchResults ? searchResults.length : 0}`);
   
   if (searchResults && searchResults.length > 0) {
     dialogContexts.set(dialogId, {
@@ -131,8 +141,8 @@ async function handleTextMessage(dialogId, message, userName) {
 }
 
 // Обработка команд от кнопок
-async function handleCommand(dialogId, command, userName) {
-  console.log(`📱 Команда от ${userName}: ${command}`);
+async function handleButtonCommand(dialogId, command, userName) {
+  console.log(`🔘 Обработка команды кнопки: "${command}" от ${userName}`);
   
   switch (command) {
     case 'refine':
@@ -164,7 +174,8 @@ async function handleCommand(dialogId, command, userName) {
       break;
       
     case 'transfer':
-      await transferToSpecialist(dialogId, userName);
+      // Переводим на специалиста с ID 39
+      await transferToSpecialist(dialogId, userName, 39);
       break;
       
     case 'helpful':
@@ -224,7 +235,9 @@ async function handleCommand(dialogId, command, userName) {
       break;
       
     default:
-      await sendMessage(dialogId, "🤔 Неизвестная команда. Пожалуйста, воспользуйтесь кнопками меню.");
+      // Если неизвестная команда, пробуем как обычный поиск
+      console.log(`⚠️ Неизвестная команда: ${command}, пробуем поиск`);
+      await handleTextMessage(dialogId, command, userName);
   }
   
   return true;
@@ -247,35 +260,39 @@ module.exports = async (req, res) => {
   }
   
   try {
-    console.log('📨 Получен вебхук:', JSON.stringify(req.body, null, 2));
+    console.log('📨 Получен вебхук');
     
     const data = req.body;
     
-    // Извлекаем данные из плоской структуры Битрикс24
+    // Извлекаем данные
     const bitrixData = extractBitrixData(data);
     
-    // Проверяем что это сообщение от пользователя
-    if (!bitrixData.message || !bitrixData.dialogId) {
-      console.log('⚠️ Неполные данные сообщения');
+    if (!bitrixData.message && !bitrixData.command) {
+      console.log('⚠️ Нет сообщения или команды');
       return res.status(200).json({ status: 'ok', message: 'No message data' });
     }
     
-    // Игнорируем сообщения от бота
+    if (!bitrixData.dialogId) {
+      console.log('⚠️ Нет dialogId');
+      return res.status(200).json({ status: 'ok', message: 'No dialog ID' });
+    }
+    
     if (bitrixData.isBot) {
       console.log('🤖 Сообщение от бота, игнорируем');
       return res.status(200).json({ status: 'ok', message: 'Bot message ignored' });
     }
     
-    console.log(`💬 Сообщение от ${bitrixData.userName} (${bitrixData.dialogId}): ${bitrixData.message}`);
+    console.log(`💬 Обработка от ${bitrixData.userName} (${bitrixData.dialogId})`);
     
-    if (bitrixData.isCommand) {
-      const command = bitrixData.message.slice(1);
-      await handleCommand(bitrixData.dialogId, command, bitrixData.userName);
+    if (bitrixData.isButton) {
+      // Обработка нажатия кнопки
+      await handleButtonCommand(bitrixData.dialogId, bitrixData.command, bitrixData.userName);
     } else {
+      // Обработка текстового сообщения
       await handleTextMessage(bitrixData.dialogId, bitrixData.message, bitrixData.userName);
     }
     
-    return res.status(200).json({ status: 'ok', message: 'Message processed' });
+    return res.status(200).json({ status: 'ok', message: 'Processed' });
     
   } catch (error) {
     console.error('❌ Ошибка в вебхуке:', error);
