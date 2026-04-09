@@ -1,10 +1,10 @@
 // services/searchEngine.js
-// Поисковый движок для документации (Яндекс.Диск + file_index.json)
+// Поисковый движок: file_index.json + нормализация + динамические ссылки
 
 // ✅ Импорт нормализатора с синонимами
 const { normalizeWithSynonyms } = require('../utils/normalizer');
 
-// ✅ Загрузка индекса файлов (кэшируется при старте)
+// ✅ Загрузка индекса файлов
 let fileIndex = [];
 try {
   fileIndex = require('../data/file_index.json');
@@ -13,53 +13,76 @@ try {
   console.error('❌ Не удалось загрузить file_index.json:', e.message);
 }
 
-// Кэш результатов поиска (опционально, для производительности)
+// Кэш поиска
 const searchCache = new Map();
-const CACHE_TTL = 5 * 60 * 1000; // 5 минут
+const CACHE_TTL = 5 * 60 * 1000;
 
-// Конфигурация Яндекс.Диска
-const YANDEX_CONFIG = {
-  token: process.env.YANDEX_DISK_TOKEN,
-  publicKey: process.env.YANDEX_DISK_PUBLIC_KEY,
-  basePath: process.env.YANDEX_DISK_FOLDER_PATH || '/8. Документация по брендам. Общая',
-  apiUrl: 'https://cloud-api.yandex.net/v1/disk/public/resources'
+// ✅ Маппинг: префикс пути → publicKey Яндекс.Диска
+// Добавьте сюда все папки, у которых свой ключ
+const FOLDER_KEYS = {
+  '/01. iOT Systems/02. iOT Кабель': 'xJi6eEXBTq01sw',
+  '/01. iOT Systems/03. iOT EasyCool': 'EuWsEkI__LPmIQ',  // ✅ Ваша рабочая ссылка для easycool
+  '/01. iOT Systems/04. iOT Замки': '...',
+  '/01. iOT Systems/05. CoolPlug': '...',
+  '/01. iOT Systems/06. URRI': '...',
+  '/01. iOT Systems/07. Интеграции/Алиса': '...',
+  '/02. Buspro': '...',
+  '/03. KNX': '...',
+  '/04. Matech': '...',
+  '/05. Yeelight': '...',
+  '/06. DALI': '...',
+  '/07. Интеграции': '...',
+  '/08. Документация по брендам. Общая': 'zL7GKQgcMMkcJg',  // Дефолтный ключ для общей папки
+  '/10. URRI. Плееры, ресиверы': '...'
 };
 
-// Сопоставление ключевых слов с путями на Яндекс.Диске (для мгновенных перенаправлений)
-const FOLDER_REDIRECTS = {
-  'кабель': '/01. iOT Systems/02. iOT Кабель',
-  'cable': '/01. iOT Systems/02. iOT Кабель',
-  'провода': '/01. iOT Systems/02. iOT Кабель',
+// Дефолтный publicKey (если путь не найден в маппинге)
+const DEFAULT_PUBLIC_KEY = process.env.YANDEX_DISK_PUBLIC_KEY || 'zL7GKQgcMMkcJg';
+
+// Домен Яндекс.Диска (проверьте, какой используется у вас)
+const YANDEX_DOMAIN = 'disk.360.yandex.ru'; // или 'disk.yandex.ru'
+
+/**
+ * 🔍 Находит publicKey для пути файла
+ * Ищет наиболее длинное совпадение префикса
+ */
+function getPublicKeyForPath(filePath) {
+  if (!filePath) return DEFAULT_PUBLIC_KEY;
   
-  'замок': '/01. iOT Systems/04. iOT Замки',
-  'lock': '/01. iOT Systems/04. iOT Замки',
+  // Сортируем ключи по длине (сначала самые длинные) для точного совпадения
+  const sortedPrefixes = Object.keys(FOLDER_KEYS).sort((a, b) => b.length - a.length);
   
-  'easycool': '/01. iOT Systems/03. iOT EasyCool',
-  'изикул': '/01. iOT Systems/03. iOT EasyCool',
-  'кондиционер': '/01. iOT Systems/03. iOT EasyCool',
+  for (const prefix of sortedPrefixes) {
+    if (filePath.startsWith(prefix)) {
+      console.log(`🔑 publicKey для "${filePath}": ${FOLDER_KEYS[prefix]} (по префиксу "${prefix}")`);
+      return FOLDER_KEYS[prefix];
+    }
+  }
   
-  'coolplug': '/01. iOT Systems/05. CoolPlug',
-  'кулплаг': '/01. iOT Systems/05. CoolPlug',
+  console.log(`⚠️ Не найден publicKey для "${filePath}", используем дефолтный: ${DEFAULT_PUBLIC_KEY}`);
+  return DEFAULT_PUBLIC_KEY;
+}
+
+/**
+ * ✅ Строит рабочую ссылку на Яндекс.Диск с правильным publicKey и кодировкой
+ */
+function buildYandexLink(filePath, fileName = null) {
+  // Определяем publicKey по пути
+  const publicKey = getPublicKeyForPath(filePath);
   
-  'урри': '/01. iOT Systems/06. URRI',
-  'urri': '/01. iOT Systems/06. URRI',
-  'юрии': '/01. iOT Systems/06. URRI',
+  // Кодируем путь: каждый сегмент отдельно, сохраняя "/"
+  const encodedPath = filePath.split('/').map(segment => encodeURIComponent(segment)).join('/');
   
-  'алиса': '/07. Интеграции/Алиса',
-  'alisa': '/07. Интеграции/Алиса',
+  // Если есть имя файла — добавляем его в конец
+  const filePart = fileName ? '/' + encodeURIComponent(fileName) : '';
   
-  'buspro': '/02. Buspro',
-  'knx': '/03. KNX',
-  'hdl': '/01. iOT Systems',
+  const url = `https://${YANDEX_DOMAIN}/d/${publicKey}${encodedPath}${filePart}`;
   
-  'документация': '/8. Документация по брендам. Общая',
-  'техничка': '/8. Документация по брендам. Общая',
-  'инструкция': '/8. Документация по брендам. Общая',
-  'мануал': '/8. Документация по брендам. Общая',
+  // 🔍 Отладочный лог (можно закомментировать в продакшене)
+  console.log(`🔗 Сгенерирована ссылка: ${url}`);
   
-  'варфрейм': '/8. Документация по брендам. Общая',
-  'wireframe': '/8. Документация по брендам. Общая'
-};
+  return url;
+}
 
 /**
  * Форматирует название файла для красивой ссылки
@@ -91,31 +114,29 @@ function formatLinkTitle(title) {
 }
 
 /**
- * Строит публичную ссылку на Яндекс.Диск с правильной кодировкой
+ * Быстрые перенаправления на папки (готовые ссылки для частых запросов)
  */
-function buildYandexLink(folderPath) {
-  const basePath = YANDEX_CONFIG.basePath.replace(/\/$/, '');
-  const cleanFolderPath = folderPath.startsWith('/') ? folderPath.substring(1) : folderPath;
-  const fullPath = `${basePath}/${cleanFolderPath}`;
-  
-  // ✅ Кодируем каждый сегмент отдельно, сохраняя "/"
-  const encodedPath = fullPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
-  
-  return `https://disk.360.yandex.ru/d/${YANDEX_CONFIG.publicKey}${encodedPath}`;
-}
+const QUICK_REDIRECTS = {
+  'easycool': 'https://disk.360.yandex.ru/d/EuWsEkI__LPmIQ',
+  'изикул': 'https://disk.360.yandex.ru/d/EuWsEkI__LPmIQ',
+  'кабель': 'https://disk.360.yandex.ru/d/xJi6eEXBTq01sw/01.%20iOT%20Systems/02.%20iOT%20Кабель',
+  'урри': 'https://disk.360.yandex.ru/d/...', // ← добавьте вашу ссылку
+  'алиса': 'https://disk.360.yandex.ru/d/...'  // ← добавьте вашу ссылку
+};
 
 /**
- * Проверяет перенаправление на папку (мгновенный доступ)
+ * Проверяет перенаправление на папку (быстрый доступ)
  */
 function handleFolderRedirect(query) {
   if (!query || typeof query !== 'string') return { redirect: false };
   
   const normalized = query.toLowerCase().trim();
   
-  // Точное совпадение
-  if (FOLDER_REDIRECTS[normalized]) {
-    const url = buildYandexLink(FOLDER_REDIRECTS[normalized]);
+  // Проверяем быстрые перенаправления
+  if (QUICK_REDIRECTS[normalized]) {
+    const url = QUICK_REDIRECTS[normalized];
     const name = normalized.charAt(0).toUpperCase() + normalized.slice(1);
+    
     return {
       redirect: true,
       type: 'single',
@@ -125,10 +146,9 @@ function handleFolderRedirect(query) {
     };
   }
   
-  // Частичное совпадение
-  for (const [key, path] of Object.entries(FOLDER_REDIRECTS)) {
+  // Частичное совпадение по ключевым словам
+  for (const [key, url] of Object.entries(QUICK_REDIRECTS)) {
     if (normalized.includes(key)) {
-      const url = buildYandexLink(path);
       const name = key.charAt(0).toUpperCase() + key.slice(1);
       return {
         redirect: true,
@@ -146,10 +166,9 @@ function handleFolderRedirect(query) {
 /**
  * 🔍 Поиск по file_index.json с использованием нормализации
  * @param {string} query - Поисковый запрос пользователя
- * @returns {Promise<Array>} - Массив найденных файлов
+ * @returns {Promise<Array>} - Массив найденных файлов с ссылками
  */
 async function searchFiles(query) {
-  // ✅ Гарантия: всегда возвращаем массив
   if (!query || typeof query !== 'string' || fileIndex.length === 0) {
     console.log('⚠️ searchFiles: пустой запрос или индекс не загружен');
     return [];
@@ -169,29 +188,34 @@ async function searchFiles(query) {
     }
     
     // 3️⃣ Поиск по индексу: сравниваем norm_name с запросом
+    const queryLower = normalizedQuery.toLowerCase().trim();
+    
     const results = fileIndex.filter(file => {
       if (!file || !file.norm_name) return false;
       
       const fileNorm = file.norm_name.toLowerCase();
-      const queryNorm = normalizedQuery.toLowerCase();
       
-      // Ищем вхождение запроса в norm_name ИЛИ наоборот
-      return fileNorm.includes(queryNorm) || queryNorm.includes(fileNorm);
+      // Ищем вхождение: запрос в norm_name ИЛИ norm_name в запросе
+      // Это позволяет найти "urri" в "urrimanual" и наоборот
+      return fileNorm.includes(queryLower) || queryLower.includes(fileNorm);
     });
+    
+    console.log(`📊 Найдено ${results.length} файлов по norm_name`);
     
     // 4️⃣ Форматируем результаты: добавляем кликабельные ссылки
     const formattedResults = results.map(file => {
-      const url = buildYandexLink(file.path);
+      // ✅ Генерируем ссылку с правильным publicKey для пути файла
+      const url = buildYandexLink(file.path, file.name);
+      
       return {
         name: file.name,
         url: url,
         path: file.path,
-        type: file.name.endsWith('.pdf') ? 'pdf' : 'file',
+        norm_name: file.norm_name,
+        type: file.name.toLowerCase().endsWith('.pdf') ? 'pdf' : 'file',
         description: 'Документация'
       };
     });
-    
-    console.log(`📊 Найдено ${formattedResults.length} файлов`);
     
     // 5️⃣ Сохраняем в кэш
     searchCache.set(cacheKey, {
@@ -199,7 +223,6 @@ async function searchFiles(query) {
       timestamp: Date.now()
     });
     
-    // ✅ Гарантия: возвращаем массив
     return Array.isArray(formattedResults) ? formattedResults : [];
     
   } catch (error) {
@@ -221,9 +244,9 @@ function searchWithContext(newQuery, prevQuery, prevResults) {
   const normalizedNew = normalizeWithSynonyms(newQuery).toLowerCase();
   
   const filtered = prevResults.filter(item => {
-    if (!item || !item.name) return false;
-    const nameNorm = normalizeWithSynonyms(item.name).toLowerCase();
-    return nameNorm.includes(normalizedNew) || normalizedNew.includes(nameNorm);
+    if (!item || !item.norm_name) return false;
+    const itemNorm = item.norm_name.toLowerCase();
+    return itemNorm.includes(normalizedNew) || normalizedNew.includes(itemNorm);
   });
   
   return filtered.length > 0 ? filtered : searchFiles(newQuery);
@@ -231,12 +254,12 @@ function searchWithContext(newQuery, prevQuery, prevResults) {
 
 /**
  * Форматирует результаты поиска в сообщение для чата
- * ✅ Использует Markdown-формат для кликабельных ссылок
+ * ✅ Использует Markdown-формат: [текст](url)
  */
 function formatSearchResults(results, query) {
-  // ✅ Защита: гарантируем, что results — массив
+  // ✅ Защита: гарантируем массив
   if (!Array.isArray(results)) {
-    console.warn('⚠️ formatSearchResults: получен не массив, заменяем на []');
+    console.warn('⚠️ formatSearchResults: получен не массив');
     results = [];
   }
   
@@ -250,11 +273,11 @@ function formatSearchResults(results, query) {
   limited.forEach((item, index) => {
     if (!item) return;
     
-    const title = item.name || item.title || 'Документ';
-    const url = item.url || item.link || item.href || item.path || '';
+    const title = item.name || 'Документ';
+    const url = item.url || '';
     const cleanTitle = formatLinkTitle(title);
     
-    // ✅ Markdown-формат: [текст](url) — лучше поддерживается в Битрикс24
+    // ✅ Markdown-ссылка для Битрикс24
     const linkDisplay = url 
       ? `[📁 ${cleanTitle}](${url})` 
       : `📁 ${cleanTitle} (ссылка недоступна)`;
@@ -287,8 +310,9 @@ module.exports = {
   handleFolderRedirect,
   searchWithContext,
   buildYandexLink,
+  getPublicKeyForPath,
   formatLinkTitle,
   clearSearchCache,
-  FOLDER_REDIRECTS,
-  YANDEX_CONFIG
+  FOLDER_KEYS,
+  QUICK_REDIRECTS
 };
