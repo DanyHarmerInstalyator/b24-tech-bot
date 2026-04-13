@@ -32,6 +32,7 @@ const QUICK_REDIRECTS = {
   'coolplug': 'https://disk.360.yandex.ru/d/xJi6eEXBTq01sw/03.%20Coolautomation/3.%20CooLink%20Hub%20%26%20Coolplug',
   'кулплаг': 'https://disk.360.yandex.ru/d/xJi6eEXBTq01sw/03.%20Coolautomation/3.%20CooLink%20Hub%20%26%20Coolplug',
   'алиса': 'https://disk.360.yandex.ru/d/xJi6eEXBTq01sw/02.%20HDL/09.%20%D0%98%D0%BD%D1%82%D0%B5%D0%B3%D1%80%D0%B0%D1%86%D0%B8%D1%8F%20%D1%81%20%D0%B3%D0%BE%D0%BB%D0%BE%D1%81%D0%BE%D0%B2%D1%8B%D0%BC%D0%B8%20%D0%B0%D1%81%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BD%D1%82%D0%B0%D0%BC%D0%B8.%20Buspro%20%D0%B8%20KNX',
+  'алисой': 'https://disk.360.yandex.ru/d/xJi6eEXBTq01sw/02.%20HDL/09.%20%D0%98%D0%BD%D1%82%D0%B5%D0%B3%D1%80%D0%B0%D1%86%D0%B8%D1%8F%20%D1%81%20%D0%B3%D0%BE%D0%BB%D0%BE%D1%81%D0%BE%D0%B2%D1%8B%D0%BC%D0%B8%20%D0%B0%D1%81%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BD%D1%82%D0%B0%D0%BC%D0%B8.%20Buspro%20%D0%B8%20KNX',
   'карниз buspro': 'https://disk.360.yandex.ru/d/20Q51Ey5rDMXqA',
   'карниз knx': 'https://disk.360.yandex.ru/d/x1w6XEUthCgTVg'
 };
