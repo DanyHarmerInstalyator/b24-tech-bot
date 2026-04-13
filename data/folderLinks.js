@@ -69,6 +69,7 @@ function shouldRedirectToFolder(query) {
         if (category === 'easycool') return { redirect: true, link: FOLDER_LINKS["easycool"] };
         if (category === 'coolplug') return { redirect: true, link: FOLDER_LINKS["coolplug"] };
         if (category === 'alisa') return { redirect: true, link: FOLDER_LINKS["алиса"] };
+        if (category === 'alisa') return { redirect: true, link: FOLDER_LINKS["алисой"] };
         if (category === 'curtain_buspro') return { redirect: true, link: FOLDER_LINKS["карниз buspro"] };
         if (category === 'curtain_knx') return { redirect: true, link: FOLDER_LINKS["карниз knx"] };
         if (category === 'ac_easycool') return { redirect: true, link: FOLDER_LINKS["кондиционеры easycool"] };
