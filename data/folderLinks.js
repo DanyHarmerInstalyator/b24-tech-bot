@@ -41,7 +41,7 @@ const CATEGORY_KEYWORDS = {
   lock: ["замок", "замки", "дверной", "door", "lock"],
   easycool: ["easycool", "изикул", "изи кул", "easycool техничка", "easycool инструкция"],
   coolplug: ["coolplug", "кулплаг", "кулплуг"],
-  alisa: ["алиса", "яндекс алиса", "alisa", "голосовой"],
+  alisa: ["алиса","алисой", "яндекс алиса", "alisa", "голосовой"],
   curtain_buspro: ["карниз buspro", "карниз баспро"],
   curtain_knx: ["карниз knx", "карниз кникс"],
   ac_easycool: ["кондиционеры easycool"],
