@@ -8,7 +8,7 @@
 ![Приветствие бота](https://github.com/DanyHarmerInstalyator/b24-tech-bot/blob/main/screen/Frame%20414.png)
 
 ### Результат поиска документации
-![Поиск документации](screenshots/search.png](https://github.com/DanyHarmerInstalyator/b24-tech-bot/blob/main/screen/Frame%20413.png)
+![Поиск документации](https://github.com/DanyHarmerInstalyator/b24-tech-bot/blob/main/screen/Frame%20413.png)
 
 ## 📋 Функциональность
 
